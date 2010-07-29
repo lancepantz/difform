@@ -14,16 +14,7 @@
 (ns com.georgejahad.difform
   (:import name.fraser.neil.plaintext.diff_match_patch$Operation
            name.fraser.neil.plaintext.diff_match_patch)
-  (:require [clojure.contrib.str-utils2 :as s])
-  (:use clojure.walk))
-
-(defn require-contrib []
-  (try
-   (require '(clojure.contrib [pprint :as pprint]))
-   (catch Throwable e
-     (require '(clojure [pprint :as pprint])))))
-
-(require-contrib)
+  (:use clojure.walk clojure.pprint))
 
 (defn- str-comparator [x y]
   (compare (str x) (str y)))
@@ -49,12 +40,17 @@
       diff_match_patch$Operation/INSERT "+"
       diff_match_patch$Operation/DELETE "-"})
 
+(defn replace-re ;; from contrib
+  "Replaces all matches of re with replacement in s."
+  [re replacement #^String s]
+  (.replaceAll (re-matcher re s) replacement))
+
 (defn- print-diff [d]
-  (let [m (diff-markers (.operation d)) ]
-    (println (str " " m) (s/replace (.trim (.text d))
-                                    #"\n" (str "\n " m " ")))))
+  (let [m (diff-markers (.operation d))]
+    (println (str " " m) (replace-re #"\n" (str "\n " m " ") (.trim (.text d))))))
+
 (defn canonical-form [f]
-  (with-out-str (pprint/pprint (sort-form f))))
+  (with-out-str (pprint (sort-form f))))
 
 (defn difform [x y]
   (let [diffs (.diff_main (diff_match_patch.)
@@ -69,3 +65,4 @@
                           (canonical-form y))]
     (do (.diff_cleanupSemantic dmp diffs)
         (doseq [d diffs] (print-diff d)))))
+
